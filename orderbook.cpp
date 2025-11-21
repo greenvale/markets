@@ -140,7 +140,7 @@ class PriceLevel {
                 m_tail = idx;
                 return idx;
             } else {
-                throw std::runtime_error("Pool is full");
+                throw std::runtime_error("Pool is full, could not insert new node");
             }
         }
 
@@ -164,8 +164,14 @@ class PriceLevel {
             if (pool_idx >= 0 && pool_idx < MAX_ORDERS) {
                 // check if the element is the head or the tail in which case they need to be modified
                 if (pool_idx == m_head) {
-                    // this handles the case that pool_idx is the head and tail (if it's a singleton list)
-                    popFront(pool);
+                    int next = pool[m_head].next;
+                    pool.free(m_head, true);
+                    m_head = next;
+                    // if the head is now -1, then the front element was also the tail
+                    // therefore the list is now empty so set the tail to be -1
+                    if (m_head == -1) {
+                        m_tail = -1;
+                    }
                 } else if (pool_idx == m_tail) {
                     int prev = pool[m_tail].prev;
                     pool.free(pool_idx, true);
@@ -230,7 +236,7 @@ class OrderBook {
         }
 
 
-        void newOrder(int owner_id, double price, double volume, Side side) {
+        int newOrder(int owner_id, double price, double volume, Side side) {
             if (price < max_price) {
                 // get the price level index
                 int price_idx = static_cast<int>(price / tick);
@@ -260,6 +266,10 @@ class OrderBook {
 
                     order_count++;
                 }
+
+                return order.order_id;
+            } else {
+                return -1;
             }
         }
 
@@ -376,18 +386,27 @@ void test1() {
 
     OrderBook orderbook(tick, max_price);
 
-    orderbook.newOrder(1, 50.0, 100, Side::Buy);
-    orderbook.newOrder(4, 50.0, 140, Side::Buy);
-    orderbook.newOrder(11, 50.0, 120, Side::Buy);
+    std::vector<int> order_ids;
+
+    order_ids.push_back(orderbook.newOrder(1, 50.0, 100, Side::Buy));
+    order_ids.push_back(orderbook.newOrder(4, 50.0, 140, Side::Buy));
+    order_ids.push_back(orderbook.newOrder(11, 50.0, 120, Side::Buy));
 
     std::cout << "\n";
     orderbook.print();
     std::cout << "\n";
 
-    orderbook.newOrder(10, 40.0, 130, Side::Sell);
+    order_ids.push_back(orderbook.newOrder(10, 40.0, 130, Side::Sell));
     std::cout << "\n";
     orderbook.print();
-    std::cout << "\n";    
+    std::cout << "\n";
+
+    orderbook.cancelOrder(1);
+
+    std::cout << "\n";
+    orderbook.print();
+    std::cout << "\n";
+
 }
 
 
